@@ -17,17 +17,20 @@
             body * {
                 visibility: hidden;
             }
-            .print\:hidden {
+            .no-print {
                 display: none !important;
             }
-            table, table * {
+            .print-area, .print-area * {
                 visibility: visible;
             }
-            table {
+            .print-area {
                 position: absolute;
                 left: 0;
                 top: 0;
                 width: 100%;
+            }
+            @page {
+                margin: 1cm;
             }
         }
     </style>
@@ -52,11 +55,15 @@
         const Package = () => <Icon d={<><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></>} />;
         const Upload = () => <Icon d={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></>} />;
         const CheckCircle = () => <Icon d={<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>} />;
+        const RefreshCw = () => <Icon d={<><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></>} />;
+        const Lock = () => <Icon d={<><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>} />;
 
         const FabricProductionTracker = () => {
             const [activeTab, setActiveTab] = useState('register');
             const [showSettings, setShowSettings] = useState(false);
             const [showSetup, setShowSetup] = useState(false);
+            const [isReportsUnlocked, setIsReportsUnlocked] = useState(false);
+            const [passwordInput, setPasswordInput] = useState('');
             
             const [machines, setMachines] = useState(['1', '2', '3', '4']);
             const [yarns, setYarns] = useState(['100/144 + ليكرا']);
@@ -73,10 +80,16 @@
             
             const [productions, setProductions] = useState([]);
             const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
+            const [filterMachine, setFilterMachine] = useState('');
+            const [filterWorker, setFilterWorker] = useState('');
+            const [filterCustomer, setFilterCustomer] = useState('');
+            const [filterYarn, setFilterYarn] = useState('');
+            const [filterPattern, setFilterPattern] = useState('');
             
             const [sheetsUrl, setSheetsUrl] = useState('');
             const [isConnected, setIsConnected] = useState(false);
             const [isSending, setIsSending] = useState(false);
+            const [reportPassword, setReportPassword] = useState('1234');
 
             useEffect(() => {
                 try {
@@ -87,6 +100,7 @@
                     const savedCustomers = JSON.parse(localStorage.getItem('customers') || 'null');
                     const savedProductions = JSON.parse(localStorage.getItem('productions') || '[]');
                     const savedSheetsUrl = localStorage.getItem('sheetsUrl') || '';
+                    const savedPassword = localStorage.getItem('reportPassword') || '1234';
                     
                     if (savedMachines) setMachines(savedMachines);
                     if (savedYarns) setYarns(savedYarns);
@@ -96,6 +110,7 @@
                     setProductions(savedProductions);
                     setSheetsUrl(savedSheetsUrl);
                     setIsConnected(!!savedSheetsUrl);
+                    setReportPassword(savedPassword);
                 } catch (e) {
                     console.error('Error loading data:', e);
                 }
@@ -129,6 +144,10 @@
                 localStorage.setItem('sheetsUrl', sheetsUrl);
             }, [sheetsUrl]);
 
+            useEffect(() => {
+                localStorage.setItem('reportPassword', reportPassword);
+            }, [reportPassword]);
+
             const sendToGoogleSheets = async (production) => {
                 if (!sheetsUrl) return false;
                 
@@ -147,6 +166,50 @@
                     console.error('خطأ في الإرسال لـ Google Sheets:', error);
                     return false;
                 }
+            };
+
+            const syncFromGoogleSheets = async () => {
+                if (!sheetsUrl) {
+                    alert('الرجاء ربط Google Sheets أولاً');
+                    return;
+                }
+
+                try {
+                    const getUrl = sheetsUrl.replace('/exec', '') + '?action=get';
+                    const response = await fetch(getUrl);
+                    const data = await response.json();
+                    
+                    if (data && data.data) {
+                        setProductions(data.data);
+                        alert('تم تحديث البيانات من Google Sheets ✓');
+                    }
+                } catch (error) {
+                    console.error('خطأ في المزامنة:', error);
+                    alert('حدث خطأ في المزامنة. تأكد من إعدادات Google Apps Script');
+                }
+            };
+
+            const deleteProduction = async (id) => {
+                if (!confirm('هل أنت متأكد من حذف هذا السجل؟')) return;
+
+                setProductions(productions.filter(p => p.id !== id));
+
+                if (isConnected) {
+                    try {
+                        await fetch(sheetsUrl, {
+                            method: 'POST',
+                            mode: 'no-cors',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ action: 'delete', id: id })
+                        });
+                    } catch (error) {
+                        console.error('خطأ في حذف السجل من Google Sheets:', error);
+                    }
+                }
+
+                alert('تم حذف السجل ✓');
             };
 
             const handleSubmit = async () => {
@@ -187,7 +250,16 @@
                 alert('تم تسجيل التوب بنجاح ✓');
             };
 
-            const filteredProductions = productions.filter(p => p.date === filterDate);
+            const filteredProductions = productions.filter(p => {
+                return (
+                    p.date === filterDate &&
+                    (filterMachine === '' || p.machine === filterMachine) &&
+                    (filterWorker === '' || p.worker === filterWorker) &&
+                    (filterCustomer === '' || p.customer === filterCustomer) &&
+                    (filterYarn === '' || p.yarn === filterYarn) &&
+                    (filterPattern === '' || p.pattern === filterPattern)
+                );
+            });
 
             const stats = {
                 totalTops: filteredProductions.length,
@@ -229,6 +301,22 @@
                 }
             };
 
+            const handlePasswordSubmit = () => {
+                if (passwordInput === reportPassword) {
+                    setIsReportsUnlocked(true);
+                    setPasswordInput('');
+                } else {
+                    alert('كلمة المرور غير صحيحة!');
+                }
+            };
+
+            const handleTabChange = (tab) => {
+                if (tab === 'reports' && !isReportsUnlocked) {
+                    return;
+                }
+                setActiveTab(tab);
+            };
+
             const SettingsInput = ({ type, placeholder }) => {
                 const [value, setValue] = useState('');
                 
@@ -263,7 +351,7 @@
             return (
                 <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
                     <div className="max-w-6xl mx-auto">
-                        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                        <div className="bg-white rounded-lg shadow-lg p-6 mb-6 no-print">
                             <div className="flex items-center justify-between flex-wrap gap-4">
                                 <div className="flex items-center gap-3">
                                     <Package />
@@ -271,10 +359,19 @@
                                 </div>
                                 <div className="flex gap-2">
                                     {isConnected && (
-                                        <div className="flex items-center gap-2 bg-green-50 px-3 py-2 rounded-lg">
-                                            <CheckCircle />
-                                            <span className="text-xs md:text-sm text-green-700 font-bold">متصل</span>
-                                        </div>
+                                        <>
+                                            <div className="flex items-center gap-2 bg-green-50 px-3 py-2 rounded-lg">
+                                                <CheckCircle />
+                                                <span className="text-xs md:text-sm text-green-700 font-bold">متصل</span>
+                                            </div>
+                                            <button
+                                                onClick={syncFromGoogleSheets}
+                                                className="p-2 hover:bg-blue-50 rounded-lg transition-colors border-2 border-blue-200"
+                                                title="مزامنة من Google Sheets"
+                                            >
+                                                <RefreshCw />
+                                            </button>
+                                        </>
                                     )}
                                     <button
                                         onClick={() => setShowSetup(!showSetup)}
@@ -293,7 +390,7 @@
                         </div>
 
                         {showSetup && (
-                            <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg shadow-lg p-6 mb-6">
+                            <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg shadow-lg p-6 mb-6 no-print">
                                 <h2 className="text-xl font-bold mb-4 text-gray-800">إعداد Google Sheets</h2>
                                 <div className="bg-white p-4 rounded-lg mb-4">
                                     <p className="text-sm text-gray-700 mb-2">الصق رابط Google Apps Script:</p>
@@ -311,13 +408,28 @@
                                         ربط الآن
                                     </button>
                                 </div>
+                                <div className="bg-blue-50 p-3 rounded text-sm text-gray-700">
+                                    💡 <strong>ملاحظة:</strong> بعد الربط، استخدم زر المزامنة 🔄 لتحديث البيانات من Google Sheets
+                                </div>
                             </div>
                         )}
 
                         {showSettings && (
-                            <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                            <div className="bg-white rounded-lg shadow-lg p-6 mb-6 no-print">
                                 <h2 className="text-xl font-bold mb-4 text-gray-800">الإعدادات</h2>
                                 
+                                <div className="mb-6 bg-red-50 p-4 rounded-lg">
+                                    <h3 className="font-bold mb-2 text-gray-700">كلمة مرور التقارير</h3>
+                                    <input
+                                        type="text"
+                                        value={reportPassword}
+                                        onChange={(e) => setReportPassword(e.target.value)}
+                                        placeholder="كلمة المرور"
+                                        className="w-full p-3 border-2 border-gray-300 rounded-lg"
+                                    />
+                                    <p className="text-xs text-gray-600 mt-2">الكلمة الافتراضية: 1234</p>
+                                </div>
+
                                 <div className="grid md:grid-cols-3 gap-6">
                                     {[
                                         { type: 'machine', title: 'الماكينات', items: machines, placeholder: 'رقم الماكينة' },
@@ -346,18 +458,24 @@
                         )}
 
                         <div className="bg-white rounded-lg shadow-lg mb-6">
-                            <div className="flex border-b">
-                                {['register', 'reports'].map(tab => (
-                                    <button
-                                        key={tab}
-                                        onClick={() => setActiveTab(tab)}
-                                        className={`flex-1 py-4 px-6 font-bold transition-colors ${
-                                            activeTab === tab ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-50'
-                                        }`}
-                                    >
-                                        {tab === 'register' ? 'تسجيل إنتاج' : 'التقارير'}
-                                    </button>
-                                ))}
+                            <div className="flex border-b no-print">
+                                <button
+                                    onClick={() => handleTabChange('register')}
+                                    className={`flex-1 py-4 px-6 font-bold transition-colors ${
+                                        activeTab === 'register' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    تسجيل إنتاج
+                                </button>
+                                <button
+                                    onClick={() => handleTabChange('reports')}
+                                    className={`flex-1 py-4 px-6 font-bold transition-colors ${
+                                        activeTab === 'reports' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-50'
+                                    } flex items-center justify-center gap-2`}
+                                >
+                                    التقارير
+                                    {!isReportsUnlocked && <Lock />}
+                                </button>
                             </div>
 
                             {activeTab === 'register' && (
@@ -409,104 +527,24 @@
                                 </div>
                             )}
 
-                            {activeTab === 'reports' && (
-                                <div className="p-6">
-                                    <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-                                        <div className="flex items-center gap-4">
-                                            <label className="font-bold text-gray-700">التاريخ:</label>
-                                            <input
-                                                type="date"
-                                                value={filterDate}
-                                                onChange={(e) => setFilterDate(e.target.value)}
-                                                className="p-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none"
-                                            />
+                            {activeTab === 'reports' && !isReportsUnlocked && (
+                                <div className="p-6 flex items-center justify-center min-h-96">
+                                    <div className="bg-gray-50 p-8 rounded-lg border-2 border-gray-200 max-w-md w-full">
+                                        <div className="text-center mb-6">
+                                            <Lock className="mx-auto mb-4" style={{width: 48, height: 48}} />
+                                            <h3 className="text-xl font-bold text-gray-800 mb-2">التقارير محمية</h3>
+                                            <p className="text-gray-600">أدخل كلمة المرور للوصول إلى التقارير</p>
                                         </div>
+                                        <input
+                                            type="password"
+                                            value={passwordInput}
+                                            onChange={(e) => setPasswordInput(e.target.value)}
+                                            onKeyPress={(e) => e.key === 'Enter' && handlePasswordSubmit()}
+                                            placeholder="كلمة المرور"
+                                            className="w-full p-3 border-2 border-gray-300 rounded-lg mb-4 focus:border-indigo-500 focus:outline-none"
+                                        />
                                         <button
-                                            onClick={handlePrint}
-                                            className="flex items-center gap-2 bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors print:hidden"
+                                            onClick={handlePasswordSubmit}
+                                            className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg hover:bg-indigo-700 font-bold"
                                         >
-                                            <Printer />
-                                            طباعة
-                                        </button>
-                                    </div>
-
-                                    <div className="grid md:grid-cols-3 gap-4 mb-6">
-                                        <div className="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
-                                            <div className="text-sm text-blue-600 font-bold">إجمالي التوبات</div>
-                                            <div className="text-3xl font-bold text-blue-900">{stats.totalTops}</div>
-                                        </div>
-                                        <div className="bg-green-50 p-4 rounded-lg border-2 border-green-200">
-                                            <div className="text-sm text-green-600 font-bold">إجمالي الوزن</div>
-                                            <div className="text-3xl font-bold text-green-900">{stats.totalWeight.toFixed(1)} كغ</div>
-                                        </div>
-                                        <div className="bg-purple-50 p-4 rounded-lg border-2 border-purple-200">
-                                            <div className="text-sm text-purple-600 font-bold">متوسط الوزن</div>
-                                            <div className="text-3xl font-bold text-purple-900">
-                                                {stats.totalTops > 0 ? (stats.totalWeight / stats.totalTops).toFixed(1) : 0} كغ
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="mb-6">
-                                        <h3 className="font-bold text-lg mb-3 text-gray-800">الإنتاج حسب الماكينة</h3>
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                            {machines.map(m => (
-                                                <div key={m} className="bg-gray-50 p-3 rounded-lg border">
-                                                    <div className="text-sm text-gray-600">ماكينة {m}</div>
-                                                    <div className="text-2xl font-bold text-gray-900">
-                                                        {stats.byMachine[m] || 0} توب
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full border-collapse">
-                                            <thead>
-                                                <tr className="bg-gray-100">
-                                                    <th className="border p-3 text-right font-bold">الوقت</th>
-                                                    <th className="border p-3 text-right font-bold">العامل</th>
-                                                    <th className="border p-3 text-right font-bold">الزبون</th>
-                                                    <th className="border p-3 text-right font-bold">الماكينة</th>
-                                                    <th className="border p-3 text-right font-bold">النمرة</th>
-                                                    <th className="border p-3 text-right font-bold">الرسمة</th>
-                                                    <th className="border p-3 text-right font-bold">الوزن</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {filteredProductions.length === 0 ? (
-                                                    <tr>
-                                                        <td colSpan="7" className="border p-4 text-center text-gray-500">
-                                                            لا توجد بيانات لهذا التاريخ
-                                                        </td>
-                                                    </tr>
-                                                ) : (
-                                                    filteredProductions.map(p => (
-                                                        <tr key={p.id} className="hover:bg-gray-50">
-                                                            <td className="border p-3">{p.time}</td>
-                                                            <td className="border p-3">{p.worker}</td>
-                                                            <td className="border p-3">{p.customer}</td>
-                                                            <td className="border p-3">{p.machine}</td>
-                                                            <td className="border p-3">{p.yarn}</td>
-                                                            <td className="border p-3">{p.pattern}</td>
-                                                            <td className="border p-3 font-bold">{p.weight} كغ</td>
-                                                        </tr>
-                                                    ))
-                                                )}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<FabricProductionTracker />);
-    </script>
-</body>
-</html>
+                                            دخول
