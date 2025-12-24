@@ -198,6 +198,19 @@
                           (!filterMachine || p.machine === filterMachine) &&
                           (!filterCustomer || p.customer === filterCustomer)
                         );
+                const workerStats = {};
+
+            filteredProductions.forEach(p => {
+              if (!workerStats[p.worker]) {
+                workerStats[p.worker] = {
+                  count: 0,
+                  weight: 0
+                };
+              }
+              workerStats[p.worker].count += 1;
+              workerStats[p.worker].weight += p.weight;
+            });
+
             
             const stats = {
                 totalTops: filteredProductions.length,
