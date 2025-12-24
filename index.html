@@ -57,8 +57,6 @@
             const [activeTab, setActiveTab] = useState('register');
             const [showSettings, setShowSettings] = useState(false);
             const [showSetup, setShowSetup] = useState(false);
-            const [reportsUnlocked, setReportsUnlocked] = useState(false);
-            const REPORTS_PASSWORD = "1234";
             
             const [machines, setMachines] = useState(['1', '2', '3', '4']);
             const [yarns, setYarns] = useState(['100/144 + ليكرا']);
@@ -72,10 +70,6 @@
             const [selectedWorker, setSelectedWorker] = useState('');
             const [selectedCustomer, setSelectedCustomer] = useState('');
             const [weight, setWeight] = useState('');
-            const [filterWorker, setFilterWorker] = useState('');
-            const [filterMachine, setFilterMachine] = useState('');
-            const [filterCustomer, setFilterCustomer] = useState('');
-
             
             const [productions, setProductions] = useState([]);
             const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
@@ -193,25 +187,8 @@
                 alert('تم تسجيل التوب بنجاح ✓');
             };
 
-            const filteredProductions = productions.filter(p => p.date === filterDate &&
-                         (!filterWorker || p.worker === filterWorker) &&
-                          (!filterMachine || p.machine === filterMachine) &&
-                          (!filterCustomer || p.customer === filterCustomer)
-                        );
-                const workerStats = {};
+            const filteredProductions = productions.filter(p => p.date === filterDate);
 
-            filteredProductions.forEach(p => {
-              if (!workerStats[p.worker]) {
-                workerStats[p.worker] = {
-                  count: 0,
-                  weight: 0
-                };
-              }
-              workerStats[p.worker].count += 1;
-              workerStats[p.worker].weight += p.weight;
-            });
-
-            
             const stats = {
                 totalTops: filteredProductions.length,
                 totalWeight: filteredProductions.reduce((sum, p) => sum + p.weight, 0),
@@ -373,19 +350,7 @@
                                 {['register', 'reports'].map(tab => (
                                     <button
                                         key={tab}
-                                        onClick={() => {
-                                                          if (tab === 'reports' && !reportsUnlocked) {
-                                                            const pass = prompt('أدخل كلمة مرور التقارير');
-                                                            if (pass === REPORTS_PASSWORD) {
-                                                              setReportsUnlocked(true);
-                                                              setActiveTab('reports');
-                                                            } else {
-                                                              alert('كلمة المرور غير صحيحة');
-                                                            }
-                                                          } else {
-                                                            setActiveTab(tab);
-                                                          }
-                                                        }}
+                                        onClick={() => setActiveTab(tab)}
                                         className={`flex-1 py-4 px-6 font-bold transition-colors ${
                                             activeTab === tab ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-50'
                                         }`}
@@ -464,30 +429,7 @@
                                             طباعة
                                         </button>
                                     </div>
-                                        <div className="mb-6">
-                                      <h3 className="font-bold mb-3">إنتاج العمال</h3>
-                                      <table className="w-full border">
-                                        <thead>
-                                          <tr>
-                                            <th>العامل</th>
-                                            <th>عدد التوبات</th>
-                                            <th>إجمالي الوزن</th>
-                                            <th>متوسط الوزن</th>
-                                          </tr>
-                                        </thead>
-                                        <tbody>
-                                          {Object.entries(workerStats).map(([name, s]) => (
-                                            <tr key={name}>
-                                              <td>{name}</td>
-                                              <td>{s.count}</td>
-                                              <td>{s.weight.toFixed(1)}</td>
-                                              <td>{(s.weight / s.count).toFixed(1)}</td>
-                                            </tr>
-                                          ))}
-                                        </tbody>
-                                      </table>
-                                    </div>
-                                    
+
                                     <div className="grid md:grid-cols-3 gap-4 mb-6">
                                         <div className="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
                                             <div className="text-sm text-blue-600 font-bold">إجمالي التوبات</div>
@@ -518,7 +460,7 @@
                                             ))}
                                         </div>
                                     </div>
-                                                        
+
                                     <div className="overflow-x-auto">
                                         <table className="w-full border-collapse">
                                             <thead>
