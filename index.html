@@ -405,7 +405,14 @@
                                     تسجيل إنتاج
                                 </button>
                                 <button
-                                    onClick={() => handleTabChange('reports')}
+                                    onClick={() => {
+                                                    if (!isReportsUnlocked) {
+                                                        
+                                                        setActiveTab('reports');
+                                                    } else {
+                                                        handleTabChange('reports');
+                                                    }
+                                            }}
                                     className={`flex-1 py-4 px-6 font-bold transition-colors flex items-center justify-center gap-2 ${
                                         activeTab === 'reports' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-50'
                                     }`}
