@@ -66,9 +66,9 @@
             
             const [machines, setMachines] = useState(['1', '2', '3', '4']);
             const [yarns, setYarns] = useState(['100/144 + ليكرا']);
-            const [patterns, setPatterns] = useState(['wac000']);
-            const [workers, setWorkers] = useState(['محمد', 'أحمد', 'علي']);
-            const [customers, setCustomers] = useState(['زبون 1', 'زبون 2']);
+            const [patterns, setPatterns] = useState(['فرعونية' , 'سنبلة']);
+            const [workers, setWorkers] = useState(['وئام', 'طه', 'أيمن' , 'محمود']);
+            const [customers, setCustomers] = useState(['KH 1 روزانا']);
             
             const [selectedMachine, setSelectedMachine] = useState('');
             const [selectedYarn, setSelectedYarn] = useState('');
@@ -360,7 +360,7 @@
                                     <h3 className="font-bold mb-2 text-gray-700">كلمة مرور التقارير</h3>
                                     <input
                                         type="text"
-                                        value={reportPassword}
+                                        value={null}
                                         onChange={(e) => setReportPassword(e.target.value)}
                                         placeholder="كلمة المرور"
                                         className="w-full p-3 border-2 border-gray-300 rounded-lg"
