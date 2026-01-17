@@ -65,10 +65,10 @@
             const [editingProduction, setEditingProduction] = useState(null);
             
             const [machines, setMachines] = useState(['1', '2', '3', '4']);
-            const [yarns, setYarns] = useState(['ليكرا + 100/144','هاف ليكرا + 100/144']);
-            const [patterns, setPatterns] = useState(['فرعونية' , 'سنبلة']);
-            const [workers, setWorkers] = useState(['وئام', 'طه', 'أيمن' , 'محمود']);
-            const [customers, setCustomers] = useState(['KH 1 روزانا']);
+            const [yarns, setYarns] = useState(['100/144 + ليكرا']);
+            const [patterns, setPatterns] = useState(['wac000']);
+            const [workers, setWorkers] = useState(['محمد', 'أحمد', 'علي']);
+            const [customers, setCustomers] = useState(['زبون 1', 'زبون 2']);
             
             const [selectedMachine, setSelectedMachine] = useState('');
             const [selectedYarn, setSelectedYarn] = useState('');
@@ -79,6 +79,9 @@
             
             const [productions, setProductions] = useState([]);
             const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
+            const [filterStartDate, setFilterStartDate] = useState(new Date().toISOString().split('T')[0]);
+            const [filterEndDate, setFilterEndDate] = useState(new Date().toISOString().split('T')[0]);
+            const [useDateRange, setUseDateRange] = useState(false);
             const [filterMachine, setFilterMachine] = useState('');
             const [filterWorker, setFilterWorker] = useState('');
             const [filterCustomer, setFilterCustomer] = useState('');
@@ -210,8 +213,12 @@
             };
 
             const filteredProductions = productions.filter(p => {
+                const dateMatch = useDateRange 
+                    ? (p.date >= filterStartDate && p.date <= filterEndDate)
+                    : (p.date === filterDate);
+                
                 return (
-                    p.date === filterDate &&
+                    dateMatch &&
                     (filterMachine === '' || p.machine === filterMachine) &&
                     (filterWorker === '' || p.worker === filterWorker) &&
                     (filterCustomer === '' || p.customer === filterCustomer) &&
@@ -360,7 +367,7 @@
                                     <h3 className="font-bold mb-2 text-gray-700">كلمة مرور التقارير</h3>
                                     <input
                                         type="text"
-                                        value={null}
+                                        value={reportPassword}
                                         onChange={(e) => setReportPassword(e.target.value)}
                                         placeholder="كلمة المرور"
                                         className="w-full p-3 border-2 border-gray-300 rounded-lg"
@@ -405,14 +412,7 @@
                                     تسجيل إنتاج
                                 </button>
                                 <button
-                                    onClick={() => {
-                                                    if (!isReportsUnlocked) {
-                                                        
-                                                        setActiveTab('reports');
-                                                    } else {
-                                                        handleTabChange('reports');
-                                                    }
-                                            }}
+                                    onClick={() => handleTabChange('reports')}
                                     className={`flex-1 py-4 px-6 font-bold transition-colors flex items-center justify-center gap-2 ${
                                         activeTab === 'reports' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-50'
                                     }`}
@@ -503,14 +503,45 @@
                                 <div className="p-6">
                                     <div className="no-print mb-6 space-y-4">
                                         <div className="flex items-center justify-between flex-wrap gap-4">
-                                            <div className="flex items-center gap-4">
-                                                <label className="font-bold text-gray-700">التاريخ:</label>
-                                                <input
-                                                    type="date"
-                                                    value={filterDate}
-                                                    onChange={(e) => setFilterDate(e.target.value)}
-                                                    className="p-2 border-2 border-gray-300 rounded-lg"
-                                                />
+                                            <div className="flex items-center gap-4 flex-wrap">
+                                                <label className="flex items-center gap-2">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={useDateRange}
+                                                        onChange={(e) => setUseDateRange(e.target.checked)}
+                                                        className="w-4 h-4"
+                                                    />
+                                                    <span className="font-bold text-gray-700">فترة زمنية</span>
+                                                </label>
+                                                
+                                                {!useDateRange ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <label className="font-bold text-gray-700">التاريخ:</label>
+                                                        <input
+                                                            type="date"
+                                                            value={filterDate}
+                                                            onChange={(e) => setFilterDate(e.target.value)}
+                                                            className="p-2 border-2 border-gray-300 rounded-lg"
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <label className="font-bold text-gray-700">من:</label>
+                                                        <input
+                                                            type="date"
+                                                            value={filterStartDate}
+                                                            onChange={(e) => setFilterStartDate(e.target.value)}
+                                                            className="p-2 border-2 border-gray-300 rounded-lg"
+                                                        />
+                                                        <label className="font-bold text-gray-700">إلى:</label>
+                                                        <input
+                                                            type="date"
+                                                            value={filterEndDate}
+                                                            onChange={(e) => setFilterEndDate(e.target.value)}
+                                                            className="p-2 border-2 border-gray-300 rounded-lg"
+                                                        />
+                                                    </div>
+                                                )}
                                             </div>
                                             <button
                                                 onClick={() => window.print()}
@@ -563,17 +594,186 @@
                                             </div>
                                         </div>
 
+                                        <div className="grid md:grid-cols-3 gap-6 mb-6">
+                                            <div className="bg-white p-4 rounded-lg border-2">
+                                                <h3 className="font-bold text-lg mb-3 text-gray-800">حسب الماكينة</h3>
+                                                <div className="space-y-2">
+                                                    {machines.map(m => {
+                                                        const machineProds = filteredProductions.filter(p => p.machine === m);
+                                                        const count = machineProds.length;
+                                                        const weight = machineProds.reduce((sum, p) => sum + p.weight, 0);
+                                                        return count > 0 ? (
+                                                            <div key={m} className="flex justify-between items-center bg-gray-50 p-2 rounded">
+                                                                <span className="font-bold">ماكينة {m}</span>
+                                                                <div className="text-right">
+                                                                    <div className="text-sm text-blue-600">{count} توب</div>
+                                                                    <div className="text-xs text-gray-600">{weight.toFixed(1)} كغ</div>
+                                                                </div>
+                                                            </div>
+                                                        ) : null;
+                                                    })}
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-white p-4 rounded-lg border-2">
+                                                <h3 className="font-bold text-lg mb-3 text-gray-800">حسب النمرة</h3>
+                                                <div className="space-y-2">
+                                                    {(() => {
+                                                        const yarnStats = {};
+                                                        filteredProductions.forEach(p => {
+                                                            if (!yarnStats[p.yarn]) {
+                                                                yarnStats[p.yarn] = { count: 0, weight: 0 };
+                                                            }
+                                                            yarnStats[p.yarn].count++;
+                                                            yarnStats[p.yarn].weight += p.weight;
+                                                        });
+                                                        return Object.entries(yarnStats).map(([yarn, data]) => (
+                                                            <div key={yarn} className="flex justify-between items-center bg-gray-50 p-2 rounded">
+                                                                <span className="font-bold text-sm">{yarn}</span>
+                                                                <div className="text-right">
+                                                                    <div className="text-sm text-blue-600">{data.count} توب</div>
+                                                                    <div className="text-xs text-gray-600">{data.weight.toFixed(1)} كغ</div>
+                                                                </div>
+                                                            </div>
+                                                        ));
+                                                    })()}
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-white p-4 rounded-lg border-2">
+                                                <h3 className="font-bold text-lg mb-3 text-gray-800">حسب الرسمة</h3>
+                                                <div className="space-y-2">
+                                                    {(() => {
+                                                        const patternStats = {};
+                                                        filteredProductions.forEach(p => {
+                                                            if (!patternStats[p.pattern]) {
+                                                                patternStats[p.pattern] = { count: 0, weight: 0 };
+                                                            }
+                                                            patternStats[p.pattern].count++;
+                                                            patternStats[p.pattern].weight += p.weight;
+                                                        });
+                                                        return Object.entries(patternStats).map(([pattern, data]) => (
+                                                            <div key={pattern} className="flex justify-between items-center bg-gray-50 p-2 rounded">
+                                                                <span className="font-bold">{pattern}</span>
+                                                                <div className="text-right">
+                                                                    <div className="text-sm text-blue-600">{data.count} توب</div>
+                                                                    <div className="text-xs text-gray-600">{data.weight.toFixed(1)} كغ</div>
+                                                                </div>
+                                                            </div>
+                                                        ));
+                                                    })()}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="mb-6 bg-gradient-to-br from-blue-50 to-indigo-100 p-6 rounded-lg border-2 border-indigo-300">
+                                            <h3 className="font-bold text-xl mb-4 text-gray-800">📊 جدول الأوزان الكلية (النمرة + الرسمة)</h3>
+                                            <div className="bg-white rounded-lg overflow-hidden">
+                                                <table className="w-full">
+                                                    <thead className="bg-indigo-600 text-white">
+                                                        <tr>
+                                                            <th className="p-3 text-right">النمرة (الخيط)</th>
+                                                            <th className="p-3 text-right">الرسمة</th>
+                                                            <th className="p-3 text-right">عدد التوبات</th>
+                                                            <th className="p-3 text-right">الوزن الكلي</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {(() => {
+                                                            const combinedStats = {};
+                                                            filteredProductions.forEach(p => {
+                                                                const key = `${p.yarn}|||${p.pattern}`;
+                                                                if (!combinedStats[key]) {
+                                                                    combinedStats[key] = {
+                                                                        yarn: p.yarn,
+                                                                        pattern: p.pattern,
+                                                                        count: 0,
+                                                                        weight: 0
+                                                                    };
+                                                                }
+                                                                combinedStats[key].count++;
+                                                                combinedStats[key].weight += p.weight;
+                                                            });
+                                                            
+                                                            return Object.values(combinedStats)
+                                                                .sort((a, b) => b.weight - a.weight)
+                                                                .map((item, idx) => (
+                                                                    <tr key={idx} className={idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                                                                        <td className="p-3 border-t">{item.yarn}</td>
+                                                                        <td className="p-3 border-t font-bold text-indigo-600">{item.pattern}</td>
+                                                                        <td className="p-3 border-t text-blue-600 font-bold">{item.count} توب</td>
+                                                                        <td className="p-3 border-t text-green-600 font-bold text-lg">{item.weight.toFixed(1)} كغ</td>
+                                                                    </tr>
+                                                                ));
+                                                        })()}
+                                                        {filteredProductions.length === 0 && (
+                                                            <tr>
+                                                                <td colSpan="4" className="p-4 text-center text-gray-500">
+                                                                    لا توجد بيانات
+                                                                </td>
+                                                            </tr>
+                                                        )}
+                                                    </tbody>
+                                                    {filteredProductions.length > 0 && (
+                                                        <tfoot className="bg-indigo-100 font-bold">
+                                                            <tr>
+                                                                <td className="p-3" colSpan="2">المجموع الكلي</td>
+                                                                <td className="p-3 text-blue-700">{stats.totalTops} توب</td>
+                                                                <td className="p-3 text-green-700 text-lg">{stats.totalWeight.toFixed(1)} كغ</td>
+                                                            </tr>
+                                                        </tfoot>
+                                                    )}
+                                                </table>
+                                            </div>
+                                        </div>
+
                                         <div className="mb-6">
-                                            <h3 className="font-bold text-lg mb-3 text-gray-800">الإنتاج حسب الماكينة</h3>
-                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                                {machines.map(m => (
-                                                    <div key={m} className="bg-gray-50 p-3 rounded-lg border">
-                                                        <div className="text-sm text-gray-600">ماكينة {m}</div>
-                                                        <div className="text-2xl font-bold text-gray-900">
-                                                            {stats.byMachine[m] || 0} توب
-                                                        </div>
-                                                    </div>
-                                                ))}
+                                            <h3 className="font-bold text-lg mb-3 text-gray-800">حسب العامل والزبون</h3>
+                                            <div className="grid md:grid-cols-2 gap-4">
+                                                <div className="bg-white p-4 rounded-lg border">
+                                                    <h4 className="font-bold mb-2">العمال</h4>
+                                                    {(() => {
+                                                        const workerStats = {};
+                                                        filteredProductions.forEach(p => {
+                                                            if (!workerStats[p.worker]) {
+                                                                workerStats[p.worker] = { count: 0, weight: 0 };
+                                                            }
+                                                            workerStats[p.worker].count++;
+                                                            workerStats[p.worker].weight += p.weight;
+                                                        });
+                                                        return Object.entries(workerStats).map(([worker, data]) => (
+                                                            <div key={worker} className="flex justify-between items-center bg-gray-50 p-2 rounded mb-2">
+                                                                <span className="font-bold">{worker}</span>
+                                                                <div className="text-right">
+                                                                    <div className="text-sm text-blue-600">{data.count} توب</div>
+                                                                    <div className="text-xs text-gray-600">{data.weight.toFixed(1)} كغ</div>
+                                                                </div>
+                                                            </div>
+                                                        ));
+                                                    })()}
+                                                </div>
+                                                <div className="bg-white p-4 rounded-lg border">
+                                                    <h4 className="font-bold mb-2">الزبائن</h4>
+                                                    {(() => {
+                                                        const customerStats = {};
+                                                        filteredProductions.forEach(p => {
+                                                            if (!customerStats[p.customer]) {
+                                                                customerStats[p.customer] = { count: 0, weight: 0 };
+                                                            }
+                                                            customerStats[p.customer].count++;
+                                                            customerStats[p.customer].weight += p.weight;
+                                                        });
+                                                        return Object.entries(customerStats).map(([customer, data]) => (
+                                                            <div key={customer} className="flex justify-between items-center bg-gray-50 p-2 rounded mb-2">
+                                                                <span className="font-bold">{customer}</span>
+                                                                <div className="text-right">
+                                                                    <div className="text-sm text-blue-600">{data.count} توب</div>
+                                                                    <div className="text-xs text-gray-600">{data.weight.toFixed(1)} كغ</div>
+                                                                </div>
+                                                            </div>
+                                                        ));
+                                                    })()}
+                                                </div>
                                             </div>
                                         </div>
 
