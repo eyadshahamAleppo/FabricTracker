@@ -65,10 +65,10 @@
             const [editingProduction, setEditingProduction] = useState(null);
             
             const [machines, setMachines] = useState(['1', '2', '3', '4']);
-            const [yarns, setYarns] = useState(['ليكرا + 100/144','هاف ليكرا + 100/144']);
-            const [patterns, setPatterns] = useState(['فرعونية' , 'سنبلة']);
-            const [workers, setWorkers] = useState(['وئام', 'طه', 'أيمن' , 'محمود']);
-            const [customers, setCustomers] = useState(['KH 1 روزانا']);
+            const [yarns, setYarns] = useState(['100/144 + ليكرا']);
+            const [patterns, setPatterns] = useState(['wac000']);
+            const [workers, setWorkers] = useState(['محمد', 'أحمد', 'علي']);
+            const [customers, setCustomers] = useState(['زبون 1', 'زبون 2']);
             
             const [selectedMachine, setSelectedMachine] = useState('');
             const [selectedYarn, setSelectedYarn] = useState('');
@@ -91,6 +91,7 @@
             const [sheetsUrl, setSheetsUrl] = useState('');
             const [isConnected, setIsConnected] = useState(false);
             const [isSending, setIsSending] = useState(false);
+            const [isSyncing, setIsSyncing] = useState(false);
             const [reportPassword, setReportPassword] = useState('1234');
 
             useEffect(() => {
@@ -103,10 +104,13 @@
                         if (parsed.patterns) setPatterns(parsed.patterns);
                         if (parsed.workers) setWorkers(parsed.workers);
                         if (parsed.customers) setCustomers(parsed.customers);
-                        if (parsed.productions) setProductions(parsed.productions);
-                        if (parsed.sheetsUrl) setSheetsUrl(parsed.sheetsUrl);
+                        if (parsed.sheetsUrl) {
+                            setSheetsUrl(parsed.sheetsUrl);
+                            setIsConnected(true);
+                            // مزامنة تلقائية عند فتح التطبيق
+                            syncFromGoogleSheets(parsed.sheetsUrl);
+                        }
                         if (parsed.reportPassword) setReportPassword(parsed.reportPassword);
-                        setIsConnected(!!parsed.sheetsUrl);
                     }
                 } catch (e) {
                     console.error('Error loading:', e);
@@ -141,6 +145,30 @@
                 } catch (error) {
                     console.error('خطأ Google Sheets:', error);
                     return false;
+                }
+            };
+
+            const syncFromGoogleSheets = async (url = sheetsUrl) => {
+                if (!url) {
+                    alert('الرجاء ربط Google Sheets أولاً');
+                    return;
+                }
+
+                setIsSyncing(true);
+                
+                try {
+                    const response = await fetch(url);
+                    const result = await response.json();
+                    
+                    if (result && result.status === 'success' && result.data) {
+                        setProductions(result.data);
+                        console.log('تم تحديث البيانات:', result.data.length, 'سجل');
+                    }
+                } catch (error) {
+                    console.error('خطأ في المزامنة:', error);
+                    alert('تعذرت المزامنة. تحقق من الاتصال بالإنترنت.');
+                } finally {
+                    setIsSyncing(false);
                 }
             };
 
@@ -311,10 +339,20 @@
                                 </div>
                                 <div className="flex gap-2">
                                     {isConnected && (
-                                        <div className="flex items-center gap-2 bg-green-50 px-3 py-2 rounded-lg">
-                                            <CheckCircle />
-                                            <span className="text-xs md:text-sm text-green-700 font-bold">متصل</span>
-                                        </div>
+                                        <>
+                                            <div className="flex items-center gap-2 bg-green-50 px-3 py-2 rounded-lg">
+                                                <CheckCircle />
+                                                <span className="text-xs md:text-sm text-green-700 font-bold">متصل</span>
+                                            </div>
+                                            <button
+                                                onClick={() => syncFromGoogleSheets()}
+                                                disabled={isSyncing}
+                                                className={`p-2 hover:bg-blue-50 rounded-lg transition-colors border-2 border-blue-200 ${isSyncing ? 'opacity-50' : ''}`}
+                                                title="مزامنة من Google Sheets"
+                                            >
+                                                <RefreshCw className={isSyncing ? 'animate-spin' : ''} />
+                                            </button>
+                                        </>
                                     )}
                                     <button
                                         onClick={() => setShowSetup(!showSetup)}
@@ -348,7 +386,9 @@
                                             if (sheetsUrl.trim()) {
                                                 setIsConnected(true);
                                                 setShowSetup(false);
-                                                alert('تم الربط ✓');
+                                                // مزامنة فورية بعد الربط
+                                                syncFromGoogleSheets(sheetsUrl.trim());
+                                                alert('تم الربط ✓ جاري تحميل البيانات...');
                                             }
                                         }}
                                         className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 font-bold"
