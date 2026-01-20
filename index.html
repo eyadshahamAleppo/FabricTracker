@@ -171,9 +171,39 @@
                     console.log('البيانات المحللة:', result);
                     
                     if (result && result.status === 'success' && result.data) {
-                        setProductions(result.data);
-                        console.log('تم تحديث البيانات:', result.data.length, 'سجل');
-                        alert(`تم تحميل ${result.data.length} سجل بنجاح! ✓`);
+                        // تنظيف البيانات وتصحيح التواريخ
+                        const cleanedData = result.data.map(item => {
+                            let cleanDate = item.date;
+                            
+                            // إذا التاريخ جاي بصيغة غريبة، نظفه
+                            if (typeof cleanDate === 'string') {
+                                // استخراج التاريخ من صيغة "Tue Jan 06 2026..."
+                                const dateMatch = cleanDate.match(/(\w{3})\s+(\w{3})\s+(\d{2})\s+(\d{4})/);
+                                if (dateMatch) {
+                                    const months = {
+                                        'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
+                                        'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
+                                        'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+                                    };
+                                    const month = months[dateMatch[2]];
+                                    const day = dateMatch[3];
+                                    const year = dateMatch[4];
+                                    cleanDate = `${year}-${month}-${day}`;
+                                } else if (cleanDate.match(/^\d{4}-\d{2}-\d{2}/)) {
+                                    // إذا كان بالصيغة الصحيحة أصلاً
+                                    cleanDate = cleanDate.substring(0, 10);
+                                }
+                            }
+                            
+                            return {
+                                ...item,
+                                date: cleanDate
+                            };
+                        });
+                        
+                        setProductions(cleanedData);
+                        console.log('تم تحديث البيانات:', cleanedData.length, 'سجل');
+                        alert(`تم تحميل ${cleanedData.length} سجل بنجاح! ✓`);
                     } else {
                         console.error('صيغة البيانات غير صحيحة:', result);
                         alert('خطأ: البيانات المستلمة غير صحيحة');
