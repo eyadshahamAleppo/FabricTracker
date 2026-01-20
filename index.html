@@ -157,16 +157,30 @@
                 setIsSyncing(true);
                 
                 try {
+                    console.log('جاري المزامنة من:', url);
                     const response = await fetch(url);
-                    const result = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const text = await response.text();
+                    console.log('الرد الخام:', text);
+                    
+                    const result = JSON.parse(text);
+                    console.log('البيانات المحللة:', result);
                     
                     if (result && result.status === 'success' && result.data) {
                         setProductions(result.data);
                         console.log('تم تحديث البيانات:', result.data.length, 'سجل');
+                        alert(`تم تحميل ${result.data.length} سجل بنجاح! ✓`);
+                    } else {
+                        console.error('صيغة البيانات غير صحيحة:', result);
+                        alert('خطأ: البيانات المستلمة غير صحيحة');
                     }
                 } catch (error) {
                     console.error('خطأ في المزامنة:', error);
-                    alert('تعذرت المزامنة. تحقق من الاتصال بالإنترنت.');
+                    alert(`خطأ في المزامنة: ${error.message}\n\nتأكد من:\n1. رابط Google Script صحيح\n2. الإعدادات: Execute as = Me, Access = Anyone`);
                 } finally {
                     setIsSyncing(false);
                 }
@@ -407,7 +421,7 @@
                                     <h3 className="font-bold mb-2 text-gray-700">كلمة مرور التقارير</h3>
                                     <input
                                         type="text"
-                                        value={null}
+                                        value={reportPassword}
                                         onChange={(e) => setReportPassword(e.target.value)}
                                         placeholder="كلمة المرور"
                                         className="w-full p-3 border-2 border-gray-300 rounded-lg"
@@ -452,14 +466,7 @@
                                     تسجيل إنتاج
                                 </button>
                                 <button
-                                    onClick={() => {
-                                                    if (!isReportsUnlocked) {
-                                                        
-                                                        setActiveTab('reports');
-                                                    } else {
-                                                        handleTabChange('reports');
-                                                    }
-                                            }}
+                                    onClick={() => handleTabChange('reports')}
                                     className={`flex-1 py-4 px-6 font-bold transition-colors flex items-center justify-center gap-2 ${
                                         activeTab === 'reports' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-50'
                                     }`}
