@@ -421,7 +421,7 @@
                                     <h3 className="font-bold mb-2 text-gray-700">كلمة مرور التقارير</h3>
                                     <input
                                         type="text"
-                                        value={reportPassword}
+                                        value={null}
                                         onChange={(e) => setReportPassword(e.target.value)}
                                         placeholder="كلمة المرور"
                                         className="w-full p-3 border-2 border-gray-300 rounded-lg"
@@ -466,7 +466,14 @@
                                     تسجيل إنتاج
                                 </button>
                                 <button
-                                    onClick={() => handleTabChange('reports')}
+                                    onClick={() => {
+                                                    if (!isReportsUnlocked) {
+                                                        
+                                                        setActiveTab('reports');
+                                                    } else {
+                                                        handleTabChange('reports');
+                                                    }
+                                            }}
                                     className={`flex-1 py-4 px-6 font-bold transition-colors flex items-center justify-center gap-2 ${
                                         activeTab === 'reports' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-50'
                                     }`}
